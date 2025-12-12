@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typography Fixer</title>
+    <style>
+      :root {
+        --bg-color: #f4f4f5;
+        --card-bg: #ffffff;
+        --text-color: #18181b;
+        --border-color: #e4e4e7;
+        --accent-color: #2563eb;
+        --accent-hover: #1d4ed8;
+        --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        --font-sans: system-ui, -apple-system, sans-serif;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-color: #18181b;
+          --card-bg: #27272a;
+          --text-color: #f4f4f5;
+          --border-color: #3f3f46;
+          --accent-color: #3b82f6;
+          --accent-hover: #60a5fa;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      header {
+        padding: 1rem 2rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--card-bg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: row;
+        padding: 1rem;
+        gap: 1rem;
+        height: 100%;
+      }
+
+      .pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .pane-header {
+        padding: 0.75rem 1rem;
+        background: var(--bg-color);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      textarea {
+        flex: 1;
+        width: 100%;
+        border: none;
+        padding: 1rem;
+        resize: none;
+        font-family: var(--font-mono);
+        font-size: 1rem;
+        line-height: 1.6;
+        background: var(--card-bg);
+        color: var(--text-color);
+        outline: none;
+      }
+
+      button {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background-color: var(--accent-hover);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+
+      /* Toast notification */
+      #toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--text-color);
+        color: var(--bg-color);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none;
+      }
+
+      @media (max-width: 768px) {
+        main {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Typography Fixer</h1>
+    </header>
+
+    <main>
+      <!-- Input Section -->
+      <div class="pane">
+        <div class="pane-header">Input (Plain Text / Markdown)</div>
+        <textarea id="input" placeholder="Paste your text here... e.g. 'Hello'    &mdash; said the cat."></textarea>
+      </div>
+
+      <!-- Output Section -->
+      <div class="pane">
+        <div class="pane-header">
+          <span>Result</span>
+          <button id="copyBtn">Copy to Clipboard</button>
+        </div>
+        <textarea id="output" readonly placeholder="Formatted text will appear here..."></textarea>
+      </div>
+    </main>
+
+    <div id="toast">Copied to clipboard!</div>
+
+    <script>
+      const inputArea = document.getElementById("input");
+      const outputArea = document.getElementById("output");
+      const copyBtn = document.getElementById("copyBtn");
+      const toast = document.getElementById("toast");
+
+      // Main replacement logic
+      function formatText(text) {
+        if (!text) return "";
+
+        // 1. Replace Em-dashes (—) with space-endash-space ( – )
+        // We do this BEFORE cleaning spaces, so if the input was "Word—Word",
+        // it becomes "Word – Word". If input was "Word — Word", it becomes "Word  –  Word",
+        // which the next step will fix.
+        text = text.replace(/—/g, " – ");
+
+        // 2. Clean Spaces
+        // A. Replace all non-newline whitespace (tabs, non-breaking spaces \u00A0, etc) with a normal space
+        text = text.replace(/[^\S\r\n]/g, " ");
+        // B. Collapse multiple spaces into a single space
+        text = text.replace(/ {2,}/g, " ");
+
+        // 3. Smart Double Quotes
+        // Opening quotes: start of line, after space, or after opening brackets
+        text = text.replace(/(\s|^|[(\[{])"/g, "$1“");
+        // Closing quotes: whatever is left
+        text = text.replace(/"/g, "”");
+
+        // 4. Smart Single Quotes
+        // Opening quotes: start of line, after space, or after opening brackets
+        text = text.replace(/(\s|^|[(\[{])'/g, "$1‘");
+        // Closing quotes and apostrophes: whatever is left
+        text = text.replace(/'/g, "’");
+
+        return text;
+      }
+
+      // Event Listener for typing
+      inputArea.addEventListener("input", () => {
+        const originalText = inputArea.value;
+        const formatted = formatText(originalText);
+        outputArea.value = formatted;
+      });
+
+      // Copy functionality
+      copyBtn.addEventListener("click", () => {
+        if (!outputArea.value) return;
+
+        outputArea.select();
+        outputArea.setSelectionRange(0, 99999); // For mobile devices
+        navigator.clipboard.writeText(outputArea.value).then(() => {
+          showToast();
+        });
+      });
+
+      function showToast() {
+        toast.style.opacity = "1";
+        setTimeout(() => {
+          toast.style.opacity = "0";
+        }, 2000);
+      }
+    </script>
+  </body>
+</html>
